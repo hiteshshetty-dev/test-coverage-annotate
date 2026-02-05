@@ -1,5 +1,5 @@
-name: 'PR Coverage Annotate'
-description: 'Scan the Changes in a PR and Use the Coverage Report to display coverage related annotations'
+name: 'PR Coverage Annotations'
+description: 'Annotate pull requests with uncovered code—highlights changed lines not covered by tests using LCOV reports'
 inputs:
   token:
     description: 'GitHub Token to access the Repo'

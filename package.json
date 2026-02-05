@@ -1,7 +1,7 @@
 {
-  "name": "pr-scan-and-warn",
+  "name": "pr-coverage-annotations",
   "version": "1.0.0",
-  "description": "",
+  "description": "GitHub Action that annotates PRs with uncovered code from LCOV coverage reports",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
