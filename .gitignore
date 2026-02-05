@@ -1,0 +1,12 @@
+# Dependencies
+node_modules/
+
+# Coverage output (often generated when running the action)
+coverage/
+*.info
+
+# OS / editor
+.DS_Store
+*.log
+.env
+.env.*
