@@ -24037,7 +24037,20 @@ const git_diff_js_1 = __nccwpck_require__(8176);
 const lcov_to_json_js_1 = __nccwpck_require__(7973);
 const analyze_js_1 = __nccwpck_require__(5883);
 const annotations_js_1 = __nccwpck_require__(8858);
-const check_run_js_1 = __nccwpck_require__(3228);
+/** Inlined so ncc CJS bundle assigns to the correct module.exports (avoids createOrUpdateCheck is not a function). */
+async function createOrUpdateCheck(data, checkType, tools, PR) {
+    const defaultCheckAttributes = {
+        owner: tools.context.repo.owner,
+        repo: tools.context.repo.repo,
+        head_sha: PR.head.sha,
+        mediaType: { previews: ['antiope'] },
+    };
+    const checkData = { ...defaultCheckAttributes, ...data };
+    if (checkType === 'create') {
+        return await tools.github.checks.create(checkData);
+    }
+    return await tools.github.checks.update(checkData);
+}
 actions_toolkit_1.Toolkit.run(async (tools) => {
     try {
         const githubToken = core.getInput('token');
@@ -24070,7 +24083,7 @@ actions_toolkit_1.Toolkit.run(async (tools) => {
         else {
             PR = toolkit.context.payload.pull_request;
         }
-        const response = await (0, check_run_js_1.createOrUpdateCheck)(createData, 'create', toolkit, PR);
+        const response = await createOrUpdateCheck(createData, 'create', toolkit, PR);
         const check_id = response.data.id;
         console.log('Check Successfully Created', check_id);
         const prData = await (0, git_diff_js_1.getDiffWithLineNumbers)('HEAD^1');
@@ -24107,7 +24120,7 @@ actions_toolkit_1.Toolkit.run(async (tools) => {
         while (leftAnnotations.length > 0) {
             const toProcess = leftAnnotations.splice(0, 50);
             updateData.output.annotations = toProcess;
-            await (0, check_run_js_1.createOrUpdateCheck)(updateData, 'update', toolkit, PR);
+            await createOrUpdateCheck(updateData, 'update', toolkit, PR);
             console.log('Check Successfully Updated.');
         }
         const completeData = {
@@ -24117,7 +24130,7 @@ actions_toolkit_1.Toolkit.run(async (tools) => {
             completed_at: new Date().toISOString(),
         };
         delete completeData.output.annotations;
-        await (0, check_run_js_1.createOrUpdateCheck)(completeData, 'update', toolkit, PR);
+        await createOrUpdateCheck(completeData, 'update', toolkit, PR);
         console.log('Check Successfully Closed');
     }
     catch (error) {
@@ -24288,35 +24301,6 @@ function createAnnotations(uncoveredData, coverageType) {
         }
     }
     return annotations;
-}
-
-
-/***/ }),
-
-/***/ 3228:
-/***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __nccwpck_require__) => {
-
-"use strict";
-__nccwpck_require__.r(__webpack_exports__);
-
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.createOrUpdateCheck = createOrUpdateCheck;
-async function createOrUpdateCheck(data, checkType, tools, PR) {
-    const defaultCheckAttributes = {
-        owner: tools.context.repo.owner,
-        repo: tools.context.repo.repo,
-        head_sha: PR.head.sha,
-        mediaType: {
-            previews: ['antiope'],
-        },
-    };
-    const checkData = { ...defaultCheckAttributes, ...data };
-    if (checkType === 'create') {
-        return await tools.github.checks.create(checkData);
-    }
-    else {
-        return await tools.github.checks.update(checkData);
-    }
 }
 
 
