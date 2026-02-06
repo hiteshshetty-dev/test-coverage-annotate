@@ -2,6 +2,7 @@ import type { Octokit } from '@octokit/rest';
 import type { UncoveredFiles } from './types.js';
 
 const COMMENT_MARKER = '<!-- test-coverage-annotate -->';
+const MAX_FILES_IN_COMMENT = 10;
 
 export interface CoverageCommentParams {
   meetsThreshold: boolean;
@@ -26,9 +27,20 @@ function buildCommentBody(params: CoverageCommentParams): string {
     untestedLinesOfFiles,
   } = params;
 
-  const fileRows = Object.entries(untestedLinesOfFiles)
+  const allEntries = Object.entries(untestedLinesOfFiles);
+  const shownEntries = allEntries.slice(0, MAX_FILES_IN_COMMENT);
+  const fileRows = shownEntries
     .map(([filename, items]) => `| ${filename} | ${items.length} |`)
     .join('\n');
+  const hasMoreFiles = allEntries.length > MAX_FILES_IN_COMMENT;
+  const filesNote = hasMoreFiles
+    ? `\n*Showing up to ${MAX_FILES_IN_COMMENT} files. Check the **Test Coverage Annotate** check run details for the full list.*\n`
+    : '';
+
+  const uncoveredSection =
+    totalWarnings > 0
+      ? `### Uncovered code by file\n\n| File | Warnings |\n| --- | --- |\n${fileRows}${filesNote}\n`
+      : '';
 
   if (meetsThreshold) {
     return `${COMMENT_MARKER}
@@ -43,7 +55,7 @@ function buildCommentBody(params: CoverageCommentParams): string {
 | **Threshold** | ${threshold}% |
 | **Uncovered instances** | ${totalWarnings} in ${totalFilesWithWarnings} file(s) |
 
-${totalWarnings > 0 ? `### Uncovered code by file\n\n| File | Warnings |\n| --- | --- |\n${fileRows}\n` : 'All new/changed lines meet the coverage threshold.'}
+${uncoveredSection || 'All new/changed lines meet the coverage threshold.'}
 
 </details>
 `;
@@ -63,7 +75,7 @@ ${totalWarnings > 0 ? `### Uncovered code by file\n\n| File | Warnings |\n| --- 
 
 New lines coverage is below the required ${threshold}%. Please add or update tests for the changed code.
 
-${totalWarnings > 0 ? `### Uncovered code by file\n\n| File | Warnings |\n| --- | --- |\n${fileRows}\n` : ''}
+${uncoveredSection}
 
 </details>
 `;
