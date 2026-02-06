@@ -56,6 +56,16 @@ Minimum percentage of new/changed lines in the PR that must be covered by tests 
 
 Defaults to `90`.
 
+### `comment-on-pr` (optional)
+
+Whether to post (or update) a coverage summary comment on the PR. Set to `false` to disable. Defaults to `true`.
+
+If you get **403** when posting the comment (e.g. `POST .../issues/.../comments - 403`), the token likely cannot write to the PR. This often happens for **pull requests from forks**, where the default `GITHUB_TOKEN` has limited permissions. Options:
+
+- **Use a Personal Access Token (PAT):** Create a PAT with `repo` (or for public repos `public_repo`) and pass it as the `token` input instead of `GITHUB_TOKEN`.
+- **Grant permissions in the workflow:** Ensure the job has `contents: read`, `pull-requests: write` (and `issues: write` if needed). For fork PRs, writing comments may still be restricted by GitHub.
+- **Disable the comment:** Set `comment-on-pr: false` so the action skips posting the comment; annotations and the check run will still work.
+
 ## :rocket: Example Usage
 
 To integrate test coverage annotations into your GitHub Actions workflow, you can use the `test-coverage-annotate` action like this:
@@ -67,6 +77,14 @@ with:
   coverage-info-path: './coverage/lcov.info'
   annotation-coverage: 'detailed'
   annotation-type: 'all'
+```
+
+If you get **403** when posting the coverage comment (e.g. on fork PRs), disable the comment or use a PAT:
+
+```yaml
+with:
+  token: ${{ secrets.GITHUB_TOKEN }}
+  comment-on-pr: false   # skip PR comment; annotations and check still run
 ```
 
 This can also be used with Travis Jobs as that is how i'm using it within my organization, please get in touch if you want to go through the steps.

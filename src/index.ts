@@ -119,25 +119,40 @@ Toolkit.run(async (tools) => {
     await createOrUpdateCheck(completeData, 'update', toolkit, PR);
     console.log('Check Successfully Closed');
 
-    try {
-      await createOrUpdateCoverageComment(
-        octokit,
-        toolkit.context.repo.owner,
-        toolkit.context.repo.repo,
-        PR.number,
-        {
-          meetsThreshold,
-          newLinesCoveragePct,
-          coveredNewLines,
-          totalNewLines,
-          threshold,
-          totalWarnings,
-          totalFilesWithWarnings: totalFiles,
-          untestedLinesOfFiles,
+    const commentOnPr = core.getInput('comment-on-pr');
+    if (commentOnPr !== 'false' && commentOnPr !== '0') {
+      try {
+        await createOrUpdateCoverageComment(
+          octokit,
+          toolkit.context.repo.owner,
+          toolkit.context.repo.repo,
+          PR.number,
+          {
+            meetsThreshold,
+            newLinesCoveragePct,
+            coveredNewLines,
+            totalNewLines,
+            threshold,
+            totalWarnings,
+            totalFilesWithWarnings: totalFiles,
+            untestedLinesOfFiles,
+          }
+        );
+      } catch (commentError: unknown) {
+        const err = commentError as Error & { status?: number; response?: { status?: number } };
+        const msg = err.message ?? String(commentError);
+        const is403 =
+          err.status === 403 ||
+          err.response?.status === 403 ||
+          /403|Forbidden/i.test(msg);
+        console.warn('Could not post coverage comment on PR:', msg);
+        if (is403) {
+          console.warn(
+            'Tip: 403 usually means the token cannot write to this PR (e.g. PR from a fork). ' +
+              'Use a PAT with repo scope, grant workflow "Contents: write" / "Pull requests: write", or set comment-on-pr: false.'
+          );
         }
-      );
-    } catch (commentError) {
-      console.warn('Could not post coverage comment on PR:', (commentError as Error).message);
+      }
     }
 
     if (!meetsThreshold) {

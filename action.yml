@@ -28,6 +28,10 @@ inputs:
     description: 'Minimum percentage of new/changed lines that must be covered by tests (0-100). Check fails if below this threshold.'
     default: '90'
     required: false
+  comment-on-pr:
+    description: "Post a coverage summary comment on the PR. Set to 'false' if you get 403 (e.g. PRs from forks with GITHUB_TOKEN)."
+    default: 'true'
+    required: false
 
 runs:
   using: 'node24'
