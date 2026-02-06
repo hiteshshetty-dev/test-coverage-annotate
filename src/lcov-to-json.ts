@@ -1,13 +1,117 @@
 import fs from 'node:fs/promises';
+import fsSync from 'node:fs';
 import path from 'node:path';
 import https from 'node:https';
 import crypto from 'node:crypto';
 import { exec } from 'node:child_process';
-import parse from 'lcov-parse';
 import type { LcovFile } from './types.js';
 
 // Use process.cwd() so this works in both ESM and CJS (bundled action runs from repo root)
 const _workDir = process.cwd();
+
+/** Inline LCOV parser (no lcov-parse dep) so ncc bundles everything. */
+interface LcovItem {
+  file: string;
+  lines: { found: number; hit: number; details: Array<{ line?: number; hit?: number }> };
+  functions: { found: number; hit: number; details: Array<{ name?: string; line?: number; hit?: number }> };
+  branches: { found: number; hit: number; details: Array<{ line?: number; block?: number; branch?: number; taken?: number }> };
+}
+
+function walkLcov(str: string, cb: (err: Error | null, data: LcovFile[]) => void): void {
+  const data: LcovItem[] = [];
+  let item: LcovItem = {
+    lines: { found: 0, hit: 0, details: [] },
+    functions: { found: 0, hit: 0, details: [] },
+    branches: { found: 0, hit: 0, details: [] },
+    file: '',
+  };
+
+  ['end_of_record'].concat(str.split('\n')).forEach((line) => {
+    line = line.trim();
+    const allparts = line.split(':');
+    const parts = [allparts.shift(), allparts.join(':')] as [string, string];
+    let lineParts: string[];
+    let fn: string[];
+
+    switch (parts[0].toUpperCase()) {
+      case 'SF':
+        item.file = parts[1].trim();
+        break;
+      case 'FNF':
+        item.functions.found = Number(parts[1].trim());
+        break;
+      case 'FNH':
+        item.functions.hit = Number(parts[1].trim());
+        break;
+      case 'LF':
+        item.lines.found = Number(parts[1].trim());
+        break;
+      case 'LH':
+        item.lines.hit = Number(parts[1].trim());
+        break;
+      case 'DA':
+        lineParts = parts[1].split(',');
+        item.lines.details.push({ line: Number(lineParts[0]), hit: Number(lineParts[1]) });
+        break;
+      case 'FN':
+        fn = parts[1].split(',');
+        item.functions.details.push({ name: fn[1], line: Number(fn[0]) });
+        break;
+      case 'FNDA':
+        fn = parts[1].split(',');
+        item.functions.details.some((i, k) => {
+          if (i.name === fn[1] && i.hit === undefined) {
+            (item.functions.details[k] as { hit?: number }).hit = Number(fn[0]);
+            return true;
+          }
+          return false;
+        });
+        break;
+      case 'BRDA':
+        fn = parts[1].split(',');
+        item.branches.details.push({
+          line: Number(fn[0]),
+          block: Number(fn[1]),
+          branch: Number(fn[2]),
+          taken: fn[3] === '-' ? 0 : Number(fn[3]),
+        });
+        break;
+      case 'BRF':
+        item.branches.found = Number(parts[1]);
+        break;
+      case 'BRH':
+        item.branches.hit = Number(parts[1]);
+        break;
+      default:
+        break;
+    }
+
+    if (line.indexOf('end_of_record') > -1) {
+      data.push({ ...item });
+      item = {
+        lines: { found: 0, hit: 0, details: [] },
+        functions: { found: 0, hit: 0, details: [] },
+        branches: { found: 0, hit: 0, details: [] },
+        file: '',
+      };
+    }
+  });
+
+  data.shift();
+  if (data.length) cb(null, data as LcovFile[]);
+  else cb(new Error('Failed to parse string'), []);
+}
+
+function parseLcovFile(file: string, cb: (err: Error | null, data: LcovFile[]) => void): void {
+  fsSync.readFile(file, 'utf8', (err, str) => {
+    if (err) {
+      if ((err as NodeJS.ErrnoException).code === 'ENOENT') return walkLcov(file, cb);
+      cb(err, []);
+      return;
+    }
+    walkLcov(str, cb);
+  });
+}
 
 /**
  * Converts a Coverage report .info file to a JavaScript object
@@ -108,7 +212,7 @@ async function saveContentToLocalFile(filePath: string, content: string): Promis
 async function parseCoverageReport(filePath: string): Promise<LcovFile[]> {
   console.log('filePath to parse: ', filePath);
   const data = await new Promise<LcovFile[]>((resolve, reject) => {
-    parse(filePath, (err: Error | null, data: LcovFile[]) => {
+    parseLcovFile(filePath, (err: Error | null, data: LcovFile[]) => {
       if (err) reject(err);
       else resolve(data);
     });

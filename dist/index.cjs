@@ -24401,13 +24401,106 @@ var __importDefault = (undefined && undefined.__importDefault) || function (mod)
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.coverageReportToJs = coverageReportToJs;
 const promises_1 = __importDefault(require("node:fs/promises"));
+const node_fs_1 = __importDefault(require("node:fs"));
 const node_path_1 = __importDefault(require("node:path"));
 const node_https_1 = __importDefault(require("node:https"));
 const node_crypto_1 = __importDefault(require("node:crypto"));
 const node_child_process_1 = require("node:child_process");
-const lcov_parse_1 = __importDefault(require("lcov-parse"));
 // Use process.cwd() so this works in both ESM and CJS (bundled action runs from repo root)
 const _workDir = process.cwd();
+function walkLcov(str, cb) {
+    const data = [];
+    let item = {
+        lines: { found: 0, hit: 0, details: [] },
+        functions: { found: 0, hit: 0, details: [] },
+        branches: { found: 0, hit: 0, details: [] },
+        file: '',
+    };
+    ['end_of_record'].concat(str.split('\n')).forEach((line) => {
+        line = line.trim();
+        const allparts = line.split(':');
+        const parts = [allparts.shift(), allparts.join(':')];
+        let lineParts;
+        let fn;
+        switch (parts[0].toUpperCase()) {
+            case 'SF':
+                item.file = parts[1].trim();
+                break;
+            case 'FNF':
+                item.functions.found = Number(parts[1].trim());
+                break;
+            case 'FNH':
+                item.functions.hit = Number(parts[1].trim());
+                break;
+            case 'LF':
+                item.lines.found = Number(parts[1].trim());
+                break;
+            case 'LH':
+                item.lines.hit = Number(parts[1].trim());
+                break;
+            case 'DA':
+                lineParts = parts[1].split(',');
+                item.lines.details.push({ line: Number(lineParts[0]), hit: Number(lineParts[1]) });
+                break;
+            case 'FN':
+                fn = parts[1].split(',');
+                item.functions.details.push({ name: fn[1], line: Number(fn[0]) });
+                break;
+            case 'FNDA':
+                fn = parts[1].split(',');
+                item.functions.details.some((i, k) => {
+                    if (i.name === fn[1] && i.hit === undefined) {
+                        item.functions.details[k].hit = Number(fn[0]);
+                        return true;
+                    }
+                    return false;
+                });
+                break;
+            case 'BRDA':
+                fn = parts[1].split(',');
+                item.branches.details.push({
+                    line: Number(fn[0]),
+                    block: Number(fn[1]),
+                    branch: Number(fn[2]),
+                    taken: fn[3] === '-' ? 0 : Number(fn[3]),
+                });
+                break;
+            case 'BRF':
+                item.branches.found = Number(parts[1]);
+                break;
+            case 'BRH':
+                item.branches.hit = Number(parts[1]);
+                break;
+            default:
+                break;
+        }
+        if (line.indexOf('end_of_record') > -1) {
+            data.push({ ...item });
+            item = {
+                lines: { found: 0, hit: 0, details: [] },
+                functions: { found: 0, hit: 0, details: [] },
+                branches: { found: 0, hit: 0, details: [] },
+                file: '',
+            };
+        }
+    });
+    data.shift();
+    if (data.length)
+        cb(null, data);
+    else
+        cb(new Error('Failed to parse string'), []);
+}
+function parseLcovFile(file, cb) {
+    node_fs_1.default.readFile(file, 'utf8', (err, str) => {
+        if (err) {
+            if (err.code === 'ENOENT')
+                return walkLcov(file, cb);
+            cb(err, []);
+            return;
+        }
+        walkLcov(str, cb);
+    });
+}
 /**
  * Converts a Coverage report .info file to a JavaScript object
  * @param reportFile path to the Coverage Report file or URL
@@ -24500,7 +24593,7 @@ async function saveContentToLocalFile(filePath, content) {
 async function parseCoverageReport(filePath) {
     console.log('filePath to parse: ', filePath);
     const data = await new Promise((resolve, reject) => {
-        (0, lcov_parse_1.default)(filePath, (err, data) => {
+        parseLcovFile(filePath, (err, data) => {
             if (err)
                 reject(err);
             else
