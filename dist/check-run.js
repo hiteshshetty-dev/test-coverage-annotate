@@ -15,4 +15,3 @@ export async function createOrUpdateCheck(data, checkType, tools, PR) {
         return await tools.github.checks.update(checkData);
     }
 }
-//# sourceMappingURL=check-run.js.map

@@ -23979,7 +23979,7 @@ function getDiffWithLineNumbers(baseBranch) {
         });
     });
 }
-//# sourceMappingURL=git_diff.js.map
+
 ;// CONCATENATED MODULE: external "node:fs/promises"
 const promises_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:fs/promises");
 ;// CONCATENATED MODULE: external "node:path"
@@ -24109,7 +24109,7 @@ function generateTempFilename(urlStr) {
     const hash = external_node_crypto_namespaceObject.createHash('md5').update(urlStr).digest('hex');
     return `coverage/coverage_${hash}.info`;
 }
-//# sourceMappingURL=lcov-to-json.js.map
+
 ;// CONCATENATED MODULE: ./dist/analyze.js
 function checkCoverage(lineNumber, coverageDetails) {
     console.log(`lineNumber: ${lineNumber}`);
@@ -24186,7 +24186,7 @@ function findUncoveredCodeInPR(prData, coverageJSON, typesToCover) {
         resolve(filesWithMatches);
     });
 }
-//# sourceMappingURL=analyze.js.map
+
 ;// CONCATENATED MODULE: ./dist/annotations.js
 const pluralToSingularMap = {
     functions: 'function',
@@ -24253,7 +24253,7 @@ function createAnnotations(uncoveredData, coverageType) {
     }
     return annotations;
 }
-//# sourceMappingURL=annotations.js.map
+
 ;// CONCATENATED MODULE: ./dist/check-run.js
 async function createOrUpdateCheck(data, checkType, tools, PR) {
     const defaultCheckAttributes = {
@@ -24272,7 +24272,7 @@ async function createOrUpdateCheck(data, checkType, tools, PR) {
         return await tools.github.checks.update(checkData);
     }
 }
-//# sourceMappingURL=check-run.js.map
+
 ;// CONCATENATED MODULE: ./dist/index.js
 
 
@@ -24370,4 +24370,4 @@ actions_toolkit_lib.Toolkit.run(async (tools) => {
     }
     tools.exit.success('PR Scan and Warn Analysis completed successfully!');
 });
-//# sourceMappingURL=index.js.map
+

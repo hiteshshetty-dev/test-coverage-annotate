@@ -113,4 +113,3 @@ function generateTempFilename(urlStr) {
     const hash = crypto.createHash('md5').update(urlStr).digest('hex');
     return `coverage/coverage_${hash}.info`;
 }
-//# sourceMappingURL=lcov-to-json.js.map

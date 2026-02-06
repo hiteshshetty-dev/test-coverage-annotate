@@ -53,4 +53,3 @@ export function getDiffWithLineNumbers(baseBranch) {
         });
     });
 }
-//# sourceMappingURL=git_diff.js.map

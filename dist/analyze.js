@@ -73,4 +73,3 @@ export function findUncoveredCodeInPR(prData, coverageJSON, typesToCover) {
         resolve(filesWithMatches);
     });
 }
-//# sourceMappingURL=analyze.js.map

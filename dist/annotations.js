@@ -63,4 +63,3 @@ export function createAnnotations(uncoveredData, coverageType) {
     }
     return annotations;
 }
-//# sourceMappingURL=annotations.js.map
