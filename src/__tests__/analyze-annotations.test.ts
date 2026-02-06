@@ -96,6 +96,19 @@ describe('coverage-files filter', () => {
     expect(filtered).toHaveLength(1);
     expect(filtered[0].fileName).toBe('src/lib/foo.ts');
   });
+
+  it('filterPrDataForCoverage returns empty when include pattern matches no files', () => {
+    const prData: PrData = [
+      { fileName: 'src/foo.ts', data: [{ lineNumber: '1', endsAfter: '1', line: ['x'] }] },
+      { fileName: 'src/bar.js', data: [{ lineNumber: '1', endsAfter: '1', line: ['y'] }] },
+    ];
+    const filtered = filterPrDataForCoverage(prData, { include: '.py,.rb' });
+    expect(filtered).toHaveLength(0);
+    // In the action: totalNewLines=0, coveredNewLines=0, meetsThreshold=true, and we show "No files matched the coverage filters"
+    const stats = getNewLinesCoverageStats(filtered, mockCoverageJSON);
+    expect(stats.totalNewLines).toBe(0);
+    expect(stats.coveredNewLines).toBe(0);
+  });
 });
 
 describe('getNewLinesCoverageStats', () => {

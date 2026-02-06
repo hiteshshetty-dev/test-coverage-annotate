@@ -94,11 +94,15 @@ Toolkit.run(async (tools) => {
         title: 'Test Coverage Annotate🔎',
       },
     };
+    const noFilesMatchedFilter =
+      prData.length > 0 && prDataForCoverage.length === 0;
     const coverageSummary = `**New lines coverage:** ${coveredNewLines}/${totalNewLines} (${newLinesCoveragePct}%) — threshold ${threshold}%\n\n`;
     if (annotations.length === 0) {
       updateData.output.summary =
         coverageSummary +
-        'All Good! We found No Uncovered Lines of Code in your Pull Request.🚀';
+        (noFilesMatchedFilter
+          ? 'No files in this PR matched the coverage include/exclude filters. No coverage check performed.'
+          : 'All Good! We found No Uncovered Lines of Code in your Pull Request.🚀');
     } else {
       let summary = coverageSummary;
       summary += `### Found a Total of ${totalWarnings} Instances of Uncovered Code in ${totalFiles} Files!⚠️\n\n`;
@@ -150,6 +154,7 @@ Toolkit.run(async (tools) => {
             totalWarnings,
             totalFilesWithWarnings: totalFiles,
             untestedLinesOfFiles,
+            noFilesMatchedFilter,
           }
         );
       } catch (commentError: unknown) {

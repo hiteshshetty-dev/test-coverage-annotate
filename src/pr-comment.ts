@@ -13,6 +13,8 @@ export interface CoverageCommentParams {
   totalWarnings: number;
   totalFilesWithWarnings: number;
   untestedLinesOfFiles: UncoveredFiles;
+  /** True when the PR had changes but no files matched the include/exclude filters. */
+  noFilesMatchedFilter?: boolean;
 }
 
 function buildCommentBody(params: CoverageCommentParams): string {
@@ -25,6 +27,7 @@ function buildCommentBody(params: CoverageCommentParams): string {
     totalWarnings,
     totalFilesWithWarnings,
     untestedLinesOfFiles,
+    noFilesMatchedFilter,
   } = params;
 
   const allEntries = Object.entries(untestedLinesOfFiles);
@@ -55,7 +58,7 @@ function buildCommentBody(params: CoverageCommentParams): string {
 | **Threshold** | ${threshold}% |
 | **Uncovered instances** | ${totalWarnings} in ${totalFilesWithWarnings} file(s) |
 
-${uncoveredSection || 'All new/changed lines meet the coverage threshold.'}
+${noFilesMatchedFilter ? 'No files in this PR matched the coverage include/exclude filters. No coverage check performed.' : (uncoveredSection || 'All new/changed lines meet the coverage threshold.')}
 
 </details>
 `;
