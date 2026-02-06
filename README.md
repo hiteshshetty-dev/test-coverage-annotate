@@ -90,3 +90,15 @@ with:
 This can also be used with Travis Jobs as that is how i'm using it within my organization, please get in touch if you want to go through the steps.
 
 **Note:** If you are using [actions/checkout](https://github.com/actions/checkout) in your workflow, make sure you add the `fetch-depth: 0` parameter. This is necessary for the tool to access the coverage file properly.
+
+## Releasing
+
+To publish a new version, use **semver tags** (e.g. `v1.0.0`). Ensure `dist/` is committed, then create and push a tag:
+
+```bash
+npm run build && git add dist && git commit -m "chore: build" && git push
+git tag -a v1.0.0 -m "Release v1.0.0"
+git push origin v1.0.0
+```
+
+The [release workflow](.github/workflows/release.yml) runs on tag push `v*`, runs build/test, and creates a GitHub Release. See [docs/RELEASING.md](docs/RELEASING.md) for full release and versioning details.
