@@ -2,6 +2,7 @@ import type { Toolkit } from 'actions-toolkit';
 
 export interface PullRequestRef {
   head: { sha: string };
+  number: number;
 }
 
 interface CreateOrUpdateCheckData {

@@ -17,7 +17,8 @@ Test Coverage Annotate is a powerful GitHub Action that scans the changes in a p
 - Customizable annotation style: choose between summarized or detailed annotations.
 - Flexible annotation types: focus on lines, functions, or branches that need attention.
 - Easy-to-use configuration with sensible defaults.
-- Aility to integrate with Travis Jobs
+- **PR comment** with unit coverage details: a single comment on the PR is created or updated with pass/fail status, new-lines coverage %, and file-level warning counts (green ✅ for passed, red ❌ for failed).
+- Ability to integrate with Travis Jobs
 
 ## :gear: Configuration
 

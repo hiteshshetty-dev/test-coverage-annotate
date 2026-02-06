@@ -8,6 +8,7 @@ import { findUncoveredCodeInPR, getNewLinesCoverageStats } from './analyze.js';
 import { createAnnotations } from './annotations.js';
 import { createOrUpdateCheck } from './check-run.js';
 import type { PullRequestRef } from './check-run.js';
+import { createOrUpdateCoverageComment } from './pr-comment.js';
 
 Toolkit.run(async (tools) => {
   try {
@@ -117,6 +118,27 @@ Toolkit.run(async (tools) => {
     delete (completeData.output as { annotations?: unknown }).annotations;
     await createOrUpdateCheck(completeData, 'update', toolkit, PR);
     console.log('Check Successfully Closed');
+
+    try {
+      await createOrUpdateCoverageComment(
+        octokit,
+        toolkit.context.repo.owner,
+        toolkit.context.repo.repo,
+        PR.number,
+        {
+          meetsThreshold,
+          newLinesCoveragePct,
+          coveredNewLines,
+          totalNewLines,
+          threshold,
+          totalWarnings,
+          totalFilesWithWarnings: totalFiles,
+          untestedLinesOfFiles,
+        }
+      );
+    } catch (commentError) {
+      console.warn('Could not post coverage comment on PR:', (commentError as Error).message);
+    }
 
     if (!meetsThreshold) {
       tools.exit.failure(
