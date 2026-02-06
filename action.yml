@@ -32,6 +32,12 @@ inputs:
     description: "Post a coverage summary comment on the PR. Set to 'false' if you get 403 (e.g. PRs from forks with GITHUB_TOKEN)."
     default: 'true'
     required: false
+  coverage-files-include:
+    description: "Optional. Comma-separated include patterns. Supported: extension (.ts,.tsx), glob (*.js), path segment (src/), or **/path/**. Only files matching one of these count toward coverage."
+    required: false
+  coverage-files-exclude:
+    description: "Optional. Comma-separated exclude patterns (same format as include). Files matching any of these are excluded from coverage stats."
+    required: false
 
 runs:
   using: 'node24'

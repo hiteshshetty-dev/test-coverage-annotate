@@ -3,6 +3,7 @@ import { Octokit } from '@octokit/rest';
 import fetch from 'node-fetch';
 import { Toolkit } from 'actions-toolkit';
 import { getDiffWithLineNumbers } from './git_diff.js';
+import { filterPrDataForCoverage } from './coverage-files.js';
 import { coverageReportToJs } from './lcov-to-json.js';
 import { findUncoveredCodeInPR, getNewLinesCoverageStats } from './analyze.js';
 import { createAnnotations } from './annotations.js';
@@ -49,6 +50,12 @@ Toolkit.run(async (tools) => {
     console.log('Check Successfully Created', check_id);
 
     const prData = await getDiffWithLineNumbers('HEAD^1');
+    const coverageFilesInclude = core.getInput('coverage-files-include');
+    const coverageFilesExclude = core.getInput('coverage-files-exclude');
+    const prDataForCoverage = filterPrDataForCoverage(prData, {
+      include: coverageFilesInclude || undefined,
+      exclude: coverageFilesExclude || undefined,
+    });
 
     const coverageReportPath = core.getInput('coverage-info-path');
     const noOfCoverageFiles = core.getInput('total-coverage-files');
@@ -58,13 +65,20 @@ Toolkit.run(async (tools) => {
     const typesToCoverInput = core.getInput('annotation-type');
     const typesToCover = typesToCoverInput.split(',').map((item) => item.trim());
 
-    const untestedLinesOfFiles = await findUncoveredCodeInPR(prData, coverageJSON, typesToCover);
+    const untestedLinesOfFiles = await findUncoveredCodeInPR(
+      prDataForCoverage,
+      coverageJSON,
+      typesToCover
+    );
     const coverageType = core.getInput('annotation-coverage');
     const annotations = createAnnotations(untestedLinesOfFiles, coverageType);
     const totalFiles = Object.keys(untestedLinesOfFiles).length;
     const totalWarnings = annotations.length;
 
-    const { totalNewLines, coveredNewLines } = getNewLinesCoverageStats(prData, coverageJSON);
+    const { totalNewLines, coveredNewLines } = getNewLinesCoverageStats(
+      prDataForCoverage,
+      coverageJSON
+    );
     const thresholdInput = core.getInput('new-lines-coverage-threshold');
     const threshold = Math.min(100, Math.max(0, parseInt(thresholdInput, 10) || 90));
     const newLinesCoveragePct =

@@ -3,6 +3,10 @@ import { existsSync } from 'fs';
 import { resolve } from 'path';
 import { findUncoveredCodeInPR, getNewLinesCoverageStats } from '../analyze.js';
 import { createAnnotations } from '../annotations.js';
+import {
+  filterPrDataForCoverage,
+  isFileValidForCoverage,
+} from '../coverage-files.js';
 import { coverageReportToJs } from '../lcov-to-json.js';
 import type { PrData, LcovFile } from '../types.js';
 
@@ -32,6 +36,67 @@ const mockCoverageJSON: LcovFile[] = [
     branches: { details: [] },
   },
 ];
+
+describe('coverage-files filter', () => {
+  it('includes production source files', () => {
+    expect(isFileValidForCoverage('src/index.ts')).toBe(true);
+    expect(isFileValidForCoverage('lib/app.js')).toBe(true);
+    expect(isFileValidForCoverage('controllers/app.js')).toBe(true);
+  });
+
+  it('excludes test/spec and config files', () => {
+    expect(isFileValidForCoverage('src/__tests__/foo.test.ts')).toBe(false);
+    expect(isFileValidForCoverage('foo.spec.js')).toBe(false);
+    expect(isFileValidForCoverage('vite.config.ts')).toBe(false);
+    expect(isFileValidForCoverage('README.md')).toBe(false);
+    expect(isFileValidForCoverage('package.json')).toBe(false);
+  });
+
+  it('filterPrDataForCoverage keeps only valid files', () => {
+    const prData: PrData = [
+      { fileName: 'src/foo.ts', data: [{ lineNumber: '1', endsAfter: '1', line: ['x'] }] },
+      { fileName: 'README.md', data: [{ lineNumber: '1', endsAfter: '2', line: ['a', 'b'] }] },
+      { fileName: 'bar.test.js', data: [{ lineNumber: '1', endsAfter: '1', line: ['y'] }] },
+    ];
+    const filtered = filterPrDataForCoverage(prData);
+    expect(filtered).toHaveLength(1);
+    expect(filtered[0].fileName).toBe('src/foo.ts');
+  });
+
+  it('filterPrDataForCoverage respects exclude pattern', () => {
+    const prData: PrData = [
+      { fileName: 'src/foo.ts', data: [{ lineNumber: '1', endsAfter: '1', line: ['x'] }] },
+      { fileName: 'src/generated/api.ts', data: [{ lineNumber: '1', endsAfter: '1', line: ['y'] }] },
+    ];
+    const filtered = filterPrDataForCoverage(prData, { exclude: 'generated/' });
+    expect(filtered).toHaveLength(1);
+    expect(filtered[0].fileName).toBe('src/foo.ts');
+  });
+
+  it('filterPrDataForCoverage respects include and exclude together', () => {
+    const prData: PrData = [
+      { fileName: 'src/a.ts', data: [{ lineNumber: '1', endsAfter: '1', line: ['x'] }] },
+      { fileName: 'src/b.js', data: [{ lineNumber: '1', endsAfter: '1', line: ['y'] }] },
+      { fileName: 'src/skip.ts', data: [{ lineNumber: '1', endsAfter: '1', line: ['z'] }] },
+    ];
+    const filtered = filterPrDataForCoverage(prData, {
+      include: '.ts',
+      exclude: 'skip',
+    });
+    expect(filtered).toHaveLength(1);
+    expect(filtered[0].fileName).toBe('src/a.ts');
+  });
+
+  it('filterPrDataForCoverage supports **/ path segment in include', () => {
+    const prData: PrData = [
+      { fileName: 'src/lib/foo.ts', data: [{ lineNumber: '1', endsAfter: '1', line: ['x'] }] },
+      { fileName: 'scripts/bar.ts', data: [{ lineNumber: '1', endsAfter: '1', line: ['y'] }] },
+    ];
+    const filtered = filterPrDataForCoverage(prData, { include: '**/src/**' });
+    expect(filtered).toHaveLength(1);
+    expect(filtered[0].fileName).toBe('src/lib/foo.ts');
+  });
+});
 
 describe('getNewLinesCoverageStats', () => {
   it('counts total and covered new lines', () => {

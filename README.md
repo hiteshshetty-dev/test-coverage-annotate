@@ -66,6 +66,19 @@ If you get **403** when posting the comment (e.g. `POST .../issues/.../comments 
 - **Grant permissions in the workflow:** Ensure the job has `contents: read`, `pull-requests: write` (and `issues: write` if needed). For fork PRs, writing comments may still be restricted by GitHub.
 - **Disable the comment:** Set `comment-on-pr: false` so the action skips posting the comment; annotations and the check run will still work.
 
+### `coverage-files-include` (optional)
+
+Only **files that are valid for test coverage** are used when computing new-lines coverage, annotations, and the threshold. The action does **not** consider all changed files in the PR.
+
+**Included by default:** Production source files with extensions `.ts`, `.tsx`, `.js`, `.jsx`, `.mjs`, `.cjs`.
+
+**Excluded by default:** Test/spec files (`*.test.*`, `*.spec.*`, `__tests__/`), config files, `node_modules`, `dist`, `coverage`, `.d.ts`, `.min.js`, and non-source files (e.g. `.md`, `.json`, `.yml`, `.lock`).
+
+- **Include** (`coverage-files-include`): Comma-separated patterns; only files matching one of these count. **Supported patterns:** extension (`.ts`, `.tsx`), glob (`*.js`), path segment (`src/`, `generated`), or segment glob (`**/src/**`, `**/generated/**`).
+- **Exclude** (`coverage-files-exclude`): Same pattern format; files matching any of these are excluded.
+
+Order: default rules → include filter → exclude filter.
+
 ## :rocket: Example Usage
 
 To integrate test coverage annotations into your GitHub Actions workflow, you can use the `test-coverage-annotate` action like this:
