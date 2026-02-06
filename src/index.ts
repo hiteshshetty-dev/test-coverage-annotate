@@ -6,35 +6,8 @@ import { getDiffWithLineNumbers } from './git_diff.js';
 import { coverageReportToJs } from './lcov-to-json.js';
 import { findUncoveredCodeInPR } from './analyze.js';
 import { createAnnotations } from './annotations.js';
+import { createOrUpdateCheck } from './check-run.js';
 import type { PullRequestRef } from './check-run.js';
-
-/** Inlined so ncc CJS bundle assigns to the correct module.exports (avoids createOrUpdateCheck is not a function). */
-async function createOrUpdateCheck(
-  data: {
-    started_at?: string;
-    status?: string;
-    name?: string;
-    check_run_id?: number;
-    output?: { title?: string; summary?: string; annotations?: Array<{ path: string; start_line: number; end_line: number; annotation_level: string; message: string; title?: string }> };
-    conclusion?: string;
-    completed_at?: string;
-  },
-  checkType: 'create' | 'update',
-  tools: Toolkit,
-  PR: PullRequestRef
-): Promise<{ data: { id: number } }> {
-  const defaultCheckAttributes = {
-    owner: tools.context.repo.owner,
-    repo: tools.context.repo.repo,
-    head_sha: PR.head.sha,
-    mediaType: { previews: ['antiope'] as const },
-  };
-  const checkData = { ...defaultCheckAttributes, ...data };
-  if (checkType === 'create') {
-    return await tools.github.checks.create(checkData as unknown as Parameters<typeof tools.github.checks.create>[0]);
-  }
-  return await tools.github.checks.update(checkData as unknown as Parameters<typeof tools.github.checks.update>[0]);
-}
 
 Toolkit.run(async (tools) => {
   try {

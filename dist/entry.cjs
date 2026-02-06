@@ -44,20 +44,7 @@ const git_diff_js_1 = require("./git_diff.js");
 const lcov_to_json_js_1 = require("./lcov-to-json.js");
 const analyze_js_1 = require("./analyze.js");
 const annotations_js_1 = require("./annotations.js");
-/** Inlined so ncc CJS bundle assigns to the correct module.exports (avoids createOrUpdateCheck is not a function). */
-async function createOrUpdateCheck(data, checkType, tools, PR) {
-    const defaultCheckAttributes = {
-        owner: tools.context.repo.owner,
-        repo: tools.context.repo.repo,
-        head_sha: PR.head.sha,
-        mediaType: { previews: ['antiope'] },
-    };
-    const checkData = { ...defaultCheckAttributes, ...data };
-    if (checkType === 'create') {
-        return await tools.github.checks.create(checkData);
-    }
-    return await tools.github.checks.update(checkData);
-}
+const check_run_js_1 = require("./check-run.js");
 actions_toolkit_1.Toolkit.run(async (tools) => {
     try {
         const githubToken = core.getInput('token');
@@ -90,7 +77,7 @@ actions_toolkit_1.Toolkit.run(async (tools) => {
         else {
             PR = toolkit.context.payload.pull_request;
         }
-        const response = await createOrUpdateCheck(createData, 'create', toolkit, PR);
+        const response = await (0, check_run_js_1.createOrUpdateCheck)(createData, 'create', toolkit, PR);
         const check_id = response.data.id;
         console.log('Check Successfully Created', check_id);
         const prData = await (0, git_diff_js_1.getDiffWithLineNumbers)('HEAD^1');
@@ -127,7 +114,7 @@ actions_toolkit_1.Toolkit.run(async (tools) => {
         while (leftAnnotations.length > 0) {
             const toProcess = leftAnnotations.splice(0, 50);
             updateData.output.annotations = toProcess;
-            await createOrUpdateCheck(updateData, 'update', toolkit, PR);
+            await (0, check_run_js_1.createOrUpdateCheck)(updateData, 'update', toolkit, PR);
             console.log('Check Successfully Updated.');
         }
         const completeData = {
@@ -137,7 +124,7 @@ actions_toolkit_1.Toolkit.run(async (tools) => {
             completed_at: new Date().toISOString(),
         };
         delete completeData.output.annotations;
-        await createOrUpdateCheck(completeData, 'update', toolkit, PR);
+        await (0, check_run_js_1.createOrUpdateCheck)(completeData, 'update', toolkit, PR);
         console.log('Check Successfully Closed');
     }
     catch (error) {
