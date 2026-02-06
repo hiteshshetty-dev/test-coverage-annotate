@@ -5,7 +5,7 @@
   "description": "GitHub Action that annotates PRs with uncovered code from LCOV coverage reports",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc && ncc build dist/index.js -o dist --license licenses.txt",
+    "build": "tsc -p tsconfig.build.json && cp dist/index.js dist/entry.cjs && ncc build dist/entry.cjs -o dist --license licenses.txt",
     "test": "vitest run",
     "test:watch": "vitest"
   },

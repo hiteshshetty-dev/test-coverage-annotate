@@ -1,17 +1,23 @@
-import fs from 'node:fs/promises';
-import path from 'node:path';
-import https from 'node:https';
-import crypto from 'node:crypto';
-import { exec } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
-import parse from 'lcov-parse';
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.coverageReportToJs = coverageReportToJs;
+const promises_1 = __importDefault(require("node:fs/promises"));
+const node_path_1 = __importDefault(require("node:path"));
+const node_https_1 = __importDefault(require("node:https"));
+const node_crypto_1 = __importDefault(require("node:crypto"));
+const node_child_process_1 = require("node:child_process");
+const lcov_parse_1 = __importDefault(require("lcov-parse"));
+// Use process.cwd() so this works in both ESM and CJS (bundled action runs from repo root)
+const _workDir = process.cwd();
 /**
  * Converts a Coverage report .info file to a JavaScript object
  * @param reportFile path to the Coverage Report file or URL
  * @returns Promise containing the parsed data
  */
-export async function coverageReportToJs(reportFile, noOfCoverageFiles) {
+async function coverageReportToJs(reportFile, noOfCoverageFiles) {
     if (isURL(reportFile)) {
         if (isS3Directory(reportFile)) {
             const match = reportFile.match(/\/coverage\/(\d+)\/$/);
@@ -31,7 +37,7 @@ export async function coverageReportToJs(reportFile, noOfCoverageFiles) {
         else {
             try {
                 const content = await fetchContentFromURL(reportFile);
-                const tempFilePath = path.resolve(__dirname, generateTempFilename(reportFile));
+                const tempFilePath = node_path_1.default.resolve(_workDir, generateTempFilename(reportFile));
                 console.log('**path**', tempFilePath);
                 await saveContentToLocalFile(tempFilePath, content);
                 return await parseCoverageReport(tempFilePath);
@@ -42,7 +48,7 @@ export async function coverageReportToJs(reportFile, noOfCoverageFiles) {
         }
     }
     else {
-        const reportPath = path.resolve(reportFile);
+        const reportPath = node_path_1.default.resolve(reportFile);
         console.log('**path**', reportPath);
         try {
             return await parseCoverageReport(reportPath);
@@ -62,7 +68,7 @@ function isS3Directory(urlStr) {
 function fetchContentFromURL(urlStr) {
     console.log(`** fetching File from URL: ${urlStr} **`);
     return new Promise((resolve, reject) => {
-        https
+        node_https_1.default
             .get(urlStr, (response) => {
             let data = '';
             response.on('data', (chunk) => {
@@ -79,7 +85,7 @@ function executeLcovResultMerger(inputPattern, outputFilePath) {
     return new Promise((resolve, reject) => {
         const command = `npx lcov-result-merger '${inputPattern}' '${outputFilePath}'`;
         console.log('command: ', command);
-        exec(command, (error) => {
+        (0, node_child_process_1.exec)(command, (error) => {
             if (error) {
                 console.log('failed to merge: ', error);
                 reject(error);
@@ -90,15 +96,15 @@ function executeLcovResultMerger(inputPattern, outputFilePath) {
     });
 }
 async function saveContentToLocalFile(filePath, content) {
-    const directoryPath = path.dirname(filePath);
+    const directoryPath = node_path_1.default.dirname(filePath);
     console.log('directoryPath ', directoryPath);
-    await fs.mkdir(directoryPath, { recursive: true });
-    await fs.writeFile(filePath, content, 'utf8');
+    await promises_1.default.mkdir(directoryPath, { recursive: true });
+    await promises_1.default.writeFile(filePath, content, 'utf8');
 }
 async function parseCoverageReport(filePath) {
     console.log('filePath to parse: ', filePath);
     const data = await new Promise((resolve, reject) => {
-        parse(filePath, (err, data) => {
+        (0, lcov_parse_1.default)(filePath, (err, data) => {
             if (err)
                 reject(err);
             else
@@ -108,6 +114,6 @@ async function parseCoverageReport(filePath) {
     return data;
 }
 function generateTempFilename(urlStr) {
-    const hash = crypto.createHash('md5').update(urlStr).digest('hex');
+    const hash = node_crypto_1.default.createHash('md5').update(urlStr).digest('hex');
     return `coverage/coverage_${hash}.info`;
 }

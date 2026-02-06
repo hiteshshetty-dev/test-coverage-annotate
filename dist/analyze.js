@@ -1,3 +1,6 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.findUncoveredCodeInPR = findUncoveredCodeInPR;
 function checkCoverage(lineNumber, coverageDetails) {
     console.log(`lineNumber: ${lineNumber}`);
     for (const coverage of coverageDetails) {
@@ -42,7 +45,7 @@ function checkIfLineUncoveredInCoverage(lineNumber, fileCoverage, typesToCover) 
     }
     return annotations;
 }
-export function findUncoveredCodeInPR(prData, coverageJSON, typesToCover) {
+function findUncoveredCodeInPR(prData, coverageJSON, typesToCover) {
     return new Promise((resolve) => {
         const filesWithMatches = {};
         prData.forEach((file) => {

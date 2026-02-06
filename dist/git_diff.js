@@ -1,7 +1,10 @@
-import { exec, execSync } from 'child_process';
-export function getDiffWithLineNumbers(baseBranch) {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.getDiffWithLineNumbers = getDiffWithLineNumbers;
+const child_process_1 = require("child_process");
+function getDiffWithLineNumbers(baseBranch) {
     return new Promise((resolve, reject) => {
-        exec(`git diff --name-only ${baseBranch}`, (error, stdout) => {
+        (0, child_process_1.exec)(`git diff --name-only ${baseBranch}`, (error, stdout) => {
             if (error) {
                 reject(error);
                 return;
@@ -13,14 +16,14 @@ export function getDiffWithLineNumbers(baseBranch) {
                 const regex = /\+([^\n]+)/g;
                 let allChangedLines;
                 try {
-                    allChangedLines = execSync(`git diff --unified=0 ${baseBranch} --ignore-all-space ${file} | grep -E '^\\+\\+\\+' -v | grep -E '^\\+'`).toString();
+                    allChangedLines = (0, child_process_1.execSync)(`git diff --unified=0 ${baseBranch} --ignore-all-space ${file} | grep -E '^\\+\\+\\+' -v | grep -E '^\\+'`).toString();
                 }
                 catch (err) {
                     console.log(`Seems Like No New Stuff was added in ${file}. Skipping It.`);
                     continue;
                 }
                 allChangedLines = allChangedLines.trim();
-                const linesNos = execSync(`git diff --unified=0 ${baseBranch} --ignore-all-space ${file} | grep -e '^@@' | awk -F'@@' '{print $2}'`).toString();
+                const linesNos = (0, child_process_1.execSync)(`git diff --unified=0 ${baseBranch} --ignore-all-space ${file} | grep -e '^@@' | awk -F'@@' '{print $2}'`).toString();
                 const trimmedLines = linesNos.trim();
                 const matches = trimmedLines.match(regex)?.map((match) => match.substring(1).trim()) ?? [];
                 const data = [];

@@ -3,11 +3,11 @@ import path from 'node:path';
 import https from 'node:https';
 import crypto from 'node:crypto';
 import { exec } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
 import parse from 'lcov-parse';
 import type { LcovFile } from './types.js';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// Use process.cwd() so this works in both ESM and CJS (bundled action runs from repo root)
+const _workDir = process.cwd();
 
 /**
  * Converts a Coverage report .info file to a JavaScript object
@@ -38,7 +38,7 @@ export async function coverageReportToJs(
     } else {
       try {
         const content = await fetchContentFromURL(reportFile);
-        const tempFilePath = path.resolve(__dirname, generateTempFilename(reportFile));
+        const tempFilePath = path.resolve(_workDir, generateTempFilename(reportFile));
         console.log('**path**', tempFilePath);
         await saveContentToLocalFile(tempFilePath, content);
         return await parseCoverageReport(tempFilePath);

@@ -1,4 +1,5 @@
+"use strict";
 /**
  * Shared types for the PR Coverage Annotations action.
  */
-export {};
+Object.defineProperty(exports, "__esModule", { value: true });

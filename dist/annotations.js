@@ -1,3 +1,6 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.createAnnotations = createAnnotations;
 const pluralToSingularMap = {
     functions: 'function',
     branches: 'branch',
@@ -22,7 +25,7 @@ function summarizeAnnotations(data) {
     });
     return formattedData;
 }
-export function createAnnotations(uncoveredData, coverageType) {
+function createAnnotations(uncoveredData, coverageType) {
     const annotations = [];
     if (coverageType === 'summarize') {
         const summarizedData = summarizeAnnotations(uncoveredData);

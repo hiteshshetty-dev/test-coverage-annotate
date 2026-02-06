@@ -1,4 +1,7 @@
-export async function createOrUpdateCheck(data, checkType, tools, PR) {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.createOrUpdateCheck = createOrUpdateCheck;
+async function createOrUpdateCheck(data, checkType, tools, PR) {
     const defaultCheckAttributes = {
         owner: tools.context.repo.owner,
         repo: tools.context.repo.repo,
