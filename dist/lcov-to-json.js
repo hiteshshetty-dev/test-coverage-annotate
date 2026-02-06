@@ -3,10 +3,8 @@ import path from 'node:path';
 import https from 'node:https';
 import crypto from 'node:crypto';
 import { exec } from 'node:child_process';
-import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
-const require = createRequire(import.meta.url);
-const parse = require('lcov-parse');
+import parse from 'lcov-parse';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 /**
  * Converts a Coverage report .info file to a JavaScript object

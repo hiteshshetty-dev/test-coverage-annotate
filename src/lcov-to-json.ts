@@ -3,15 +3,9 @@ import path from 'node:path';
 import https from 'node:https';
 import crypto from 'node:crypto';
 import { exec } from 'node:child_process';
-import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
+import parse from 'lcov-parse';
 import type { LcovFile } from './types.js';
-
-const require = createRequire(import.meta.url);
-const parse = require('lcov-parse') as (
-  path: string,
-  callback: (err: Error | null, data: LcovFile[]) => void
-) => void;
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 

@@ -16,4 +16,6 @@ declare module 'lcov-parse' {
     path: string,
     callback: (err: Error | null, data: LcovFileEntry[]) => void
   ): void;
+
+  export default parse;
 }
