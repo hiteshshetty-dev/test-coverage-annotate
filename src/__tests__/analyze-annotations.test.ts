@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { existsSync } from 'fs';
 import { resolve } from 'path';
-import { findUncoveredCodeInPR } from '../analyze.js';
+import { findUncoveredCodeInPR, getNewLinesCoverageStats } from '../analyze.js';
 import { createAnnotations } from '../annotations.js';
 import { coverageReportToJs } from '../lcov-to-json.js';
 import type { PrData, LcovFile } from '../types.js';
@@ -32,6 +32,21 @@ const mockCoverageJSON: LcovFile[] = [
     branches: { details: [] },
   },
 ];
+
+describe('getNewLinesCoverageStats', () => {
+  it('counts total and covered new lines', () => {
+    const stats = getNewLinesCoverageStats(mockPrData, mockCoverageJSON);
+    expect(stats.totalNewLines).toBe(2); // lines 12 and 13
+    expect(stats.coveredNewLines).toBe(1); // only line 13 has hit: 1
+  });
+
+  it('treats missing file in coverage as uncovered', () => {
+    const prData: PrData = [{ fileName: 'other.js', data: [{ lineNumber: '1', endsAfter: '1', line: ['x'] }] }];
+    const stats = getNewLinesCoverageStats(prData, mockCoverageJSON);
+    expect(stats.totalNewLines).toBe(1);
+    expect(stats.coveredNewLines).toBe(0);
+  });
+});
 
 describe('findUncoveredCodeInPR', () => {
   it('returns uncovered lines for PR data and coverage', async () => {

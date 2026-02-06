@@ -4,7 +4,7 @@ import fetch from 'node-fetch';
 import { Toolkit } from 'actions-toolkit';
 import { getDiffWithLineNumbers } from './git_diff.js';
 import { coverageReportToJs } from './lcov-to-json.js';
-import { findUncoveredCodeInPR } from './analyze.js';
+import { findUncoveredCodeInPR, getNewLinesCoverageStats } from './analyze.js';
 import { createAnnotations } from './annotations.js';
 import { createOrUpdateCheck } from './check-run.js';
 import type { PullRequestRef } from './check-run.js';
@@ -63,6 +63,13 @@ Toolkit.run(async (tools) => {
     const totalFiles = Object.keys(untestedLinesOfFiles).length;
     const totalWarnings = annotations.length;
 
+    const { totalNewLines, coveredNewLines } = getNewLinesCoverageStats(prData, coverageJSON);
+    const thresholdInput = core.getInput('new-lines-coverage-threshold');
+    const threshold = Math.min(100, Math.max(0, parseInt(thresholdInput, 10) || 90));
+    const newLinesCoveragePct =
+      totalNewLines > 0 ? Math.round((coveredNewLines / totalNewLines) * 100) : 100;
+    const meetsThreshold = totalNewLines === 0 || newLinesCoveragePct >= threshold;
+
     const updateData: {
       check_run_id: number;
       output: { title: string; summary?: string; annotations?: typeof annotations };
@@ -72,11 +79,14 @@ Toolkit.run(async (tools) => {
         title: 'Test Coverage Annotate🔎',
       },
     };
+    const coverageSummary = `**New lines coverage:** ${coveredNewLines}/${totalNewLines} (${newLinesCoveragePct}%) — threshold ${threshold}%\n\n`;
     if (annotations.length === 0) {
       updateData.output.summary =
+        coverageSummary +
         'All Good! We found No Uncovered Lines of Code in your Pull Request.🚀';
     } else {
-      let summary = `### Found a Total of ${totalWarnings} Instances of Uncovered Code in ${totalFiles} Files!⚠️\n\n`;
+      let summary = coverageSummary;
+      summary += `### Found a Total of ${totalWarnings} Instances of Uncovered Code in ${totalFiles} Files!⚠️\n\n`;
       summary += 'File Name | No. of Warnings\n';
       summary += '--------- | ---------------\n';
       Object.entries(untestedLinesOfFiles).forEach(([filename, untestedStuffArray]) => {
@@ -95,13 +105,24 @@ Toolkit.run(async (tools) => {
 
     const completeData = {
       ...updateData,
-      conclusion: 'success',
+      conclusion: meetsThreshold ? 'success' : ('failure' as const),
       status: 'completed',
       completed_at: new Date().toISOString(),
     };
+    if (!meetsThreshold) {
+      (completeData.output as { summary?: string }).summary =
+        (completeData.output.summary ?? '') +
+        `\n\n❌ **Check failed:** New lines coverage ${newLinesCoveragePct}% is below the required ${threshold}%.`;
+    }
     delete (completeData.output as { annotations?: unknown }).annotations;
     await createOrUpdateCheck(completeData, 'update', toolkit, PR);
     console.log('Check Successfully Closed');
+
+    if (!meetsThreshold) {
+      tools.exit.failure(
+        `New lines coverage ${newLinesCoveragePct}% is below the required ${threshold}%.`
+      );
+    }
   } catch (error) {
     tools.exit.failure((error as Error).message);
   }

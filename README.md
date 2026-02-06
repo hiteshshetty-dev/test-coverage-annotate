@@ -49,6 +49,12 @@ The type of coverage aspects to annotate:
 
 Defaults to 'all'.
 
+### `new-lines-coverage-threshold` (optional)
+
+Minimum percentage of new/changed lines in the PR that must be covered by tests (0–100). If coverage of new lines falls below this value, the check fails and the action step fails. Use this to enforce that new code is tested.
+
+Defaults to `90`.
+
 ## :rocket: Example Usage
 
 To integrate test coverage annotations into your GitHub Actions workflow, you can use the `test-coverage-annotate` action like this:

@@ -1,5 +1,44 @@
 import type { PrData, LcovFile, UncoveredFiles, UncoveredLine, LcovDetailEntry } from './types.js';
 
+/** Result of new-lines coverage stats for threshold check. */
+export interface NewLinesCoverageStats {
+  totalNewLines: number;
+  coveredNewLines: number;
+}
+
+function isLineCovered(lineNumber: number, fileCoverage: LcovFile): boolean {
+  for (const entry of fileCoverage.lines.details) {
+    if (entry.line === lineNumber) {
+      return (entry.hit ?? 0) > 0;
+    }
+  }
+  return false;
+}
+
+/** Compute how many new (changed) lines are covered by tests. Used for threshold check. */
+export function getNewLinesCoverageStats(
+  prData: PrData,
+  coverageJSON: LcovFile[]
+): NewLinesCoverageStats {
+  let totalNewLines = 0;
+  let coveredNewLines = 0;
+  for (const file of prData) {
+    const fileCoverage = coverageJSON.find((c) => c.file.includes(file.fileName));
+    for (const change of file.data) {
+      const startLine = parseInt(change.lineNumber, 10);
+      const count = parseInt(change.endsAfter, 10) || 1;
+      for (let i = 0; i < count; i++) {
+        const lineNum = startLine + i;
+        totalNewLines += 1;
+        if (fileCoverage && isLineCovered(lineNum, fileCoverage)) {
+          coveredNewLines += 1;
+        }
+      }
+    }
+  }
+  return { totalNewLines, coveredNewLines };
+}
+
 function checkCoverage(lineNumber: number, coverageDetails: LcovDetailEntry[]): boolean {
   console.log(`lineNumber: ${lineNumber}`);
   for (const coverage of coverageDetails) {

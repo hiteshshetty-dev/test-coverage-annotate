@@ -24,6 +24,10 @@ inputs:
     description: 'Aspects of the Coverage Report to Annotate'
     default: 'all' # or line/function/branch
     required: false
+  new-lines-coverage-threshold:
+    description: 'Minimum percentage of new/changed lines that must be covered by tests (0-100). Check fails if below this threshold.'
+    default: '90'
+    required: false
 
 runs:
   using: 'node24'
