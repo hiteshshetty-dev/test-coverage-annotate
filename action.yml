@@ -38,6 +38,10 @@ inputs:
   coverage-files-exclude:
     description: "Optional. Comma-separated exclude patterns (same format as include). Files matching any of these are excluded from coverage stats."
     required: false
+  debug:
+    description: "Set to 'true' to log coverage debug: which files were considered/ignored and how each uncovered line contributes to the coverage percentage."
+    default: 'false'
+    required: false
 
 runs:
   using: 'node24'

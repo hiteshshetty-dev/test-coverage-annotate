@@ -1,10 +1,15 @@
 import { describe, it, expect } from 'vitest';
 import { existsSync } from 'fs';
 import { resolve } from 'path';
-import { findUncoveredCodeInPR, getNewLinesCoverageStats } from '../analyze.js';
+import {
+  findUncoveredCodeInPR,
+  getNewLinesCoverageStats,
+  getUncoveredNewLineNumbers,
+} from '../analyze.js';
 import { createAnnotations } from '../annotations.js';
 import {
   filterPrDataForCoverage,
+  filterPrDataForCoverageWithReasons,
   isFileValidForCoverage,
 } from '../coverage-files.js';
 import { coverageReportToJs } from '../lcov-to-json.js';
@@ -109,6 +114,25 @@ describe('coverage-files filter', () => {
     expect(stats.totalNewLines).toBe(0);
     expect(stats.coveredNewLines).toBe(0);
   });
+
+  it('filterPrDataForCoverageWithReasons returns included and excluded with reasons', () => {
+    const prData: PrData = [
+      { fileName: 'src/foo.ts', data: [{ lineNumber: '1', endsAfter: '1', line: ['x'] }] },
+      { fileName: 'README.md', data: [{ lineNumber: '1', endsAfter: '1', line: ['a'] }] },
+      { fileName: 'src/generated/api.ts', data: [{ lineNumber: '1', endsAfter: '1', line: ['y'] }] },
+    ];
+    const result = filterPrDataForCoverageWithReasons(prData, {
+      include: '.ts',
+      exclude: 'generated/',
+    });
+    expect(result.included).toHaveLength(1);
+    expect(result.included[0].fileName).toBe('src/foo.ts');
+    expect(result.excluded).toHaveLength(2);
+    const readme = result.excluded.find((e) => e.fileName === 'README.md');
+    const generated = result.excluded.find((e) => e.fileName === 'src/generated/api.ts');
+    expect(readme?.reason).toBe('not_valid_for_coverage');
+    expect(generated?.reason).toBe('matched_exclude');
+  });
 });
 
 describe('getNewLinesCoverageStats', () => {
@@ -123,6 +147,24 @@ describe('getNewLinesCoverageStats', () => {
     const stats = getNewLinesCoverageStats(prData, mockCoverageJSON);
     expect(stats.totalNewLines).toBe(1);
     expect(stats.coveredNewLines).toBe(0);
+  });
+});
+
+describe('getUncoveredNewLineNumbers', () => {
+  it('returns every new line not included in coveredNewLines', () => {
+    const list = getUncoveredNewLineNumbers(mockPrData, mockCoverageJSON);
+    expect(list).toHaveLength(1);
+    expect(list[0]).toEqual({ fileName: 'controllers/app.js', lineNumber: 12 });
+  });
+
+  it('includes lines when file is missing from coverage', () => {
+    const prData: PrData = [{ fileName: 'other.js', data: [{ lineNumber: '5', endsAfter: '2', line: ['a', 'b'] }] }];
+    const list = getUncoveredNewLineNumbers(prData, mockCoverageJSON);
+    expect(list).toHaveLength(2);
+    expect(list).toEqual([
+      { fileName: 'other.js', lineNumber: 5 },
+      { fileName: 'other.js', lineNumber: 6 },
+    ]);
   });
 });
 

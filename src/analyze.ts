@@ -6,7 +6,7 @@ export interface NewLinesCoverageStats {
   coveredNewLines: number;
 }
 
-function isLineCovered(lineNumber: number, fileCoverage: LcovFile): boolean {
+export function isLineCovered(lineNumber: number, fileCoverage: LcovFile): boolean {
   for (const entry of fileCoverage.lines.details) {
     if (entry.line === lineNumber) {
       return (entry.hit ?? 0) > 0;
@@ -39,11 +39,32 @@ export function getNewLinesCoverageStats(
   return { totalNewLines, coveredNewLines };
 }
 
+/** All new lines that are not counted as covered (same logic as getNewLinesCoverageStats). */
+export function getUncoveredNewLineNumbers(
+  prData: PrData,
+  coverageJSON: LcovFile[]
+): { fileName: string; lineNumber: number }[] {
+  const out: { fileName: string; lineNumber: number }[] = [];
+  for (const file of prData) {
+    const fileCoverage = coverageJSON.find((c) => c.file.includes(file.fileName));
+    for (const change of file.data) {
+      const startLine = parseInt(change.lineNumber, 10);
+      const count = parseInt(change.endsAfter, 10) || 1;
+      for (let i = 0; i < count; i++) {
+        const lineNum = startLine + i;
+        const covered = fileCoverage && isLineCovered(lineNum, fileCoverage);
+        if (!covered) {
+          out.push({ fileName: file.fileName, lineNumber: lineNum });
+        }
+      }
+    }
+  }
+  return out;
+}
+
 function checkCoverage(lineNumber: number, coverageDetails: LcovDetailEntry[]): boolean {
-  console.log(`lineNumber: ${lineNumber}`);
   for (const coverage of coverageDetails) {
     if (coverage.line === lineNumber) {
-      console.log(`matched::: line: ${lineNumber}, hit: ${coverage.hit}, taken: ${coverage.taken}`);
       if (coverage.hit !== undefined && coverage.hit === 0) return true;
       if (coverage.taken !== undefined && coverage.taken === 0) return true;
     }
@@ -100,11 +121,8 @@ export function findUncoveredCodeInPR(
         coverageFile.file.includes(fileName)
       );
       if (!fileCoverage) {
-        console.log(`File ${fileName} Not Found in Coverage Data.`);
         return;
       }
-      console.log(`File ${fileName} was found in Coverage Data!!`);
-      console.log('Data: ', file.data);
       filesWithMatches[fileName] = [];
       file.data.forEach((change) => {
         const startLine = parseInt(change.lineNumber, 10);

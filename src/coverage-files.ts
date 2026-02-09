@@ -88,14 +88,50 @@ export function filterPrDataForCoverage(
   prData: PrData,
   options?: string | CoverageFilesFilterOptions
 ): PrData {
+  return filterPrDataForCoverageWithReasons(prData, options).included;
+}
+
+export interface ExcludedFileReason {
+  fileName: string;
+  reason:
+    | 'not_valid_for_coverage'
+    | 'did_not_match_include'
+    | 'matched_exclude';
+}
+
+export interface FilterPrDataResult {
+  included: PrData;
+  excluded: ExcludedFileReason[];
+}
+
+/**
+ * Same as filterPrDataForCoverage but returns which files were excluded and why.
+ * Useful for debugging: "considered" = included, "ignored" = excluded with reason.
+ */
+export function filterPrDataForCoverageWithReasons(
+  prData: PrData,
+  options?: string | CoverageFilesFilterOptions
+): FilterPrDataResult {
   const opts: CoverageFilesFilterOptions =
     typeof options === 'string' ? { include: options } : options ?? {};
   const includeFn = parsePatterns(opts.include ?? '', true);
   const excludeFn = parsePatterns(opts.exclude ?? '', false);
-  return prData.filter((file) => {
-    if (!isFileValidForCoverage(file.fileName)) return false;
-    if (!includeFn(file.fileName)) return false;
-    if (excludeFn(file.fileName)) return false;
-    return true;
-  });
+  const included: PrData = [];
+  const excluded: ExcludedFileReason[] = [];
+  for (const file of prData) {
+    if (!isFileValidForCoverage(file.fileName)) {
+      excluded.push({ fileName: file.fileName, reason: 'not_valid_for_coverage' });
+      continue;
+    }
+    if (!includeFn(file.fileName)) {
+      excluded.push({ fileName: file.fileName, reason: 'did_not_match_include' });
+      continue;
+    }
+    if (excludeFn(file.fileName)) {
+      excluded.push({ fileName: file.fileName, reason: 'matched_exclude' });
+      continue;
+    }
+    included.push(file);
+  }
+  return { included, excluded };
 }
