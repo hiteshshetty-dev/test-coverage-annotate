@@ -5,6 +5,7 @@ import {
   findUncoveredCodeInPR,
   getNewLinesCoverageStats,
   getUncoveredNewLineNumbers,
+  lcovPathMatchesPrPath,
 } from '../analyze.js';
 import { createAnnotations } from '../annotations.js';
 import {
@@ -142,11 +143,32 @@ describe('getNewLinesCoverageStats', () => {
     expect(stats.coveredNewLines).toBe(1); // only line 13 has hit: 1
   });
 
-  it('treats missing file in coverage as uncovered', () => {
+  it('ignores new lines when file is missing from coverage (same as annotations)', () => {
     const prData: PrData = [{ fileName: 'other.js', data: [{ lineNumber: '1', endsAfter: '1', line: ['x'] }] }];
     const stats = getNewLinesCoverageStats(prData, mockCoverageJSON);
-    expect(stats.totalNewLines).toBe(1);
+    expect(stats.totalNewLines).toBe(0);
     expect(stats.coveredNewLines).toBe(0);
+  });
+});
+
+describe('lcovPathMatchesPrPath', () => {
+  it('matches when paths are equal', () => {
+    expect(lcovPathMatchesPrPath('src/foo.ts', 'src/foo.ts')).toBe(true);
+  });
+  it('matches when PR path ends with LCOV path (monorepo: LCOV relative to package)', () => {
+    expect(
+      lcovPathMatchesPrPath(
+        'src/common/hooks/usePostMessageEvents.hooks.ts',
+        'visual-editor-projects/visual-editor/src/common/hooks/usePostMessageEvents.hooks.ts'
+      )
+    ).toBe(true);
+  });
+  it('matches when LCOV path ends with PR path', () => {
+    expect(lcovPathMatchesPrPath('/repo/controllers/app.js', 'controllers/app.js')).toBe(true);
+  });
+  it('does not match unrelated paths', () => {
+    expect(lcovPathMatchesPrPath('src/other.ts', 'src/foo.ts')).toBe(false);
+    expect(lcovPathMatchesPrPath('src/foo.ts', 'src/foo.ts.bak')).toBe(false);
   });
 });
 
@@ -157,14 +179,10 @@ describe('getUncoveredNewLineNumbers', () => {
     expect(list[0]).toEqual({ fileName: 'controllers/app.js', lineNumber: 12 });
   });
 
-  it('includes lines when file is missing from coverage', () => {
+  it('omits lines when file is missing from coverage (same set as annotations)', () => {
     const prData: PrData = [{ fileName: 'other.js', data: [{ lineNumber: '5', endsAfter: '2', line: ['a', 'b'] }] }];
     const list = getUncoveredNewLineNumbers(prData, mockCoverageJSON);
-    expect(list).toHaveLength(2);
-    expect(list).toEqual([
-      { fileName: 'other.js', lineNumber: 5 },
-      { fileName: 'other.js', lineNumber: 6 },
-    ]);
+    expect(list).toHaveLength(0);
   });
 });
 

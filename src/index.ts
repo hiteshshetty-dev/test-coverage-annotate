@@ -9,6 +9,7 @@ import {
   findUncoveredCodeInPR,
   getNewLinesCoverageStats,
   getUncoveredNewLineNumbers,
+  lcovPathMatchesPrPath,
 } from './analyze.js';
 import { createAnnotations } from './annotations.js';
 import { createOrUpdateCheck } from './check-run.js';
@@ -95,7 +96,7 @@ Toolkit.run(async (tools) => {
     if (debug) {
       const notInCoverageData = prDataForCoverage
         .filter(
-          (f) => !coverageJSON.some((c) => c.file.includes(f.fileName))
+          (f) => !coverageJSON.some((c) => lcovPathMatchesPrPath(c.file, f.fileName))
         )
         .map((f) => f.fileName);
       logFileFilterSummary(
@@ -112,7 +113,8 @@ Toolkit.run(async (tools) => {
         untestedLinesOfFiles,
         totalNewLines,
         coveredNewLines,
-        threshold
+        threshold,
+        coverageJSON
       );
     }
 

@@ -6,6 +6,25 @@ export interface NewLinesCoverageStats {
   coveredNewLines: number;
 }
 
+/**
+ * Returns true when the LCOV file path and the PR/diff file path refer to the same file.
+ * Handles monorepos: LCOV often has paths relative to a package (e.g. "src/foo.ts")
+ * while the PR diff has paths relative to repo root (e.g. "packages/pkg/src/foo.ts").
+ */
+export function lcovPathMatchesPrPath(lcovPath: string, prPath: string): boolean {
+  const n = (p: string) => p.replace(/\\/g, '/').replace(/^\/+/, '');
+  const a = n(prPath);
+  const b = n(lcovPath);
+  if (a === b) return true;
+  // PR path ends with LCOV path: e.g. "ve/visual-editor/src/foo.ts" vs "src/foo.ts"
+  if (a.endsWith('/' + b)) return true;
+  // LCOV path ends with PR path: e.g. "packages/x/src/foo.ts" vs "src/foo.ts"
+  if (b.endsWith('/' + a)) return true;
+  // Legacy: LCOV path contains full PR path (e.g. when LCOV has absolute or longer path)
+  if (b.includes(a)) return true;
+  return false;
+}
+
 export function isLineCovered(lineNumber: number, fileCoverage: LcovFile): boolean {
   for (const entry of fileCoverage.lines.details) {
     if (entry.line === lineNumber) {
@@ -15,7 +34,15 @@ export function isLineCovered(lineNumber: number, fileCoverage: LcovFile): boole
   return false;
 }
 
-/** Compute how many new (changed) lines are covered by tests. Used for threshold check. */
+/** True if this line has a DA (line coverage) entry in LCOV. Matches annotation logic: only such lines count for global coverage. */
+export function hasLineEntry(lineNumber: number, fileCoverage: LcovFile): boolean {
+  return fileCoverage.lines.details.some((d) => d.line === lineNumber);
+}
+
+/**
+ * Compute new-lines coverage using the same definition as annotations: only count lines
+ * that have an LCOV DA entry. Lines with no DA entry are ignored (neither total nor covered).
+ */
 export function getNewLinesCoverageStats(
   prData: PrData,
   coverageJSON: LcovFile[]
@@ -23,15 +50,17 @@ export function getNewLinesCoverageStats(
   let totalNewLines = 0;
   let coveredNewLines = 0;
   for (const file of prData) {
-    const fileCoverage = coverageJSON.find((c) => c.file.includes(file.fileName));
+    const fileCoverage = coverageJSON.find((c) => lcovPathMatchesPrPath(c.file, file.fileName));
     for (const change of file.data) {
       const startLine = parseInt(change.lineNumber, 10);
       const count = parseInt(change.endsAfter, 10) || 1;
       for (let i = 0; i < count; i++) {
         const lineNum = startLine + i;
-        totalNewLines += 1;
-        if (fileCoverage && isLineCovered(lineNum, fileCoverage)) {
-          coveredNewLines += 1;
+        if (fileCoverage && hasLineEntry(lineNum, fileCoverage)) {
+          totalNewLines += 1;
+          if (isLineCovered(lineNum, fileCoverage)) {
+            coveredNewLines += 1;
+          }
         }
       }
     }
@@ -39,21 +68,24 @@ export function getNewLinesCoverageStats(
   return { totalNewLines, coveredNewLines };
 }
 
-/** All new lines that are not counted as covered (same logic as getNewLinesCoverageStats). */
+/** New lines that have an LCOV DA entry and are uncovered (hit 0). Same set as annotation "lines" type. */
 export function getUncoveredNewLineNumbers(
   prData: PrData,
   coverageJSON: LcovFile[]
 ): { fileName: string; lineNumber: number }[] {
   const out: { fileName: string; lineNumber: number }[] = [];
   for (const file of prData) {
-    const fileCoverage = coverageJSON.find((c) => c.file.includes(file.fileName));
+    const fileCoverage = coverageJSON.find((c) => lcovPathMatchesPrPath(c.file, file.fileName));
     for (const change of file.data) {
       const startLine = parseInt(change.lineNumber, 10);
       const count = parseInt(change.endsAfter, 10) || 1;
       for (let i = 0; i < count; i++) {
         const lineNum = startLine + i;
-        const covered = fileCoverage && isLineCovered(lineNum, fileCoverage);
-        if (!covered) {
+        if (
+          fileCoverage &&
+          hasLineEntry(lineNum, fileCoverage) &&
+          !isLineCovered(lineNum, fileCoverage)
+        ) {
           out.push({ fileName: file.fileName, lineNumber: lineNum });
         }
       }
@@ -62,6 +94,11 @@ export function getUncoveredNewLineNumbers(
   return out;
 }
 
+/**
+ * True only when this line has an LCOV entry (DA/FN/BRDA) with hit 0 or taken 0.
+ * Lines with no LCOV entry return false — findUncoveredCodeInPR and the global
+ * check both only consider such lines (has entry + uncovered).
+ */
 function checkCoverage(lineNumber: number, coverageDetails: LcovDetailEntry[]): boolean {
   for (const coverage of coverageDetails) {
     if (coverage.line === lineNumber) {
@@ -118,7 +155,7 @@ export function findUncoveredCodeInPR(
     prData.forEach((file) => {
       const fileName = file.fileName;
       const fileCoverage = coverageJSON.find((coverageFile) =>
-        coverageFile.file.includes(fileName)
+        lcovPathMatchesPrPath(coverageFile.file, fileName)
       );
       if (!fileCoverage) {
         return;

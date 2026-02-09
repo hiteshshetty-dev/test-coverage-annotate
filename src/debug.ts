@@ -1,5 +1,6 @@
-import type { PrData, UncoveredFiles } from './types.js';
+import type { PrData, UncoveredFiles, LcovFile } from './types.js';
 import type { ExcludedFileReason } from './coverage-files.js';
+import { lcovPathMatchesPrPath } from './analyze.js';
 
 const REASON_LABELS: Record<ExcludedFileReason['reason'], string> = {
   not_valid_for_coverage:
@@ -48,6 +49,32 @@ export interface UncoveredNewLine {
 }
 
 /**
+ * Reason why a new line is not in coveredNewLines, for clearer debug output.
+ */
+function getUncoveredLineReason(
+  fileName: string,
+  lineNum: number,
+  untestedLinesOfFiles: UncoveredFiles,
+  coverageJSON: LcovFile[]
+): string {
+  const annotationTypes = untestedLinesOfFiles[fileName]
+    ?.filter((u) => u.lineNumber === lineNum)
+    .map((u) => u.annotationType);
+  if (annotationTypes?.length) {
+    return `(${annotationTypes.join(', ')})`;
+  }
+  const fileCoverage = coverageJSON.find((c) => lcovPathMatchesPrPath(c.file, fileName));
+  if (!fileCoverage) {
+    return '(file not in LCOV)';
+  }
+  const hasLineEntry = fileCoverage.lines.details.some((d) => d.line === lineNum);
+  if (!hasLineEntry) {
+    return '(line has no DA entry in LCOV — not instrumented or coverage from different revision)';
+  }
+  return '(no LCOV entry or file missing)';
+}
+
+/**
  * Log every new line that is not included in coveredNewLines, and how each contributes to the percentage.
  * Uses the same logic as getNewLinesCoverageStats: a line is "uncovered" if the file is missing from
  * LCOV, or the line has no LCOV entry, or the line has hit count 0.
@@ -58,7 +85,8 @@ export function logUncoveredLinesAndPercentage(
   untestedLinesOfFiles: UncoveredFiles,
   totalNewLines: number,
   coveredNewLines: number,
-  threshold: number
+  threshold: number,
+  coverageJSON: LcovFile[] = []
 ): void {
   const uncoveredCount = totalNewLines - coveredNewLines;
   const pct = totalNewLines > 0 ? (coveredNewLines / totalNewLines) * 100 : 100;
@@ -90,12 +118,13 @@ export function logUncoveredLinesAndPercentage(
       const contrib = (1 / totalNewLines) * 100;
       console.log(`  ${fileName}:`);
       for (const lineNum of lines) {
-        const annotationTypes = untestedLinesOfFiles[fileName]
-          ?.filter((u) => u.lineNumber === lineNum)
-          .map((u) => u.annotationType);
-        const suffix =
-          annotationTypes?.length ? ` (${annotationTypes.join(', ')})` : ' (no LCOV entry or file missing)';
-        console.log(`    Line ${lineNum} → −${contributionPerLine.toFixed(2)}%${suffix}`);
+        const reason = getUncoveredLineReason(
+          fileName,
+          lineNum,
+          untestedLinesOfFiles,
+          coverageJSON
+        );
+        console.log(`    Line ${lineNum} → −${contributionPerLine.toFixed(2)}% ${reason}`);
       }
     }
   }
