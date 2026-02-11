@@ -187,20 +187,20 @@ describe('getUncoveredNewLineNumbers', () => {
 });
 
 describe('findUncoveredCodeInPR', () => {
-  it('returns uncovered lines for PR data and coverage', async () => {
+  it('returns uncovered lines and total/covered new lines for percentage', async () => {
     const result = await findUncoveredCodeInPR(mockPrData, mockCoverageJSON, ['lines']);
-    expect(result).toBeDefined();
-    expect(typeof result).toBe('object');
-    expect(result['controllers/app.js']).toBeDefined();
-    expect(Array.isArray(result['controllers/app.js'])).toBe(true);
-    expect(result['controllers/app.js'].length).toBeGreaterThanOrEqual(0);
+    expect(result.untestedLinesOfFiles).toBeDefined();
+    expect(result.untestedLinesOfFiles['controllers/app.js']).toBeDefined();
+    expect(Array.isArray(result.untestedLinesOfFiles['controllers/app.js'])).toBe(true);
+    expect(result.totalNewLines).toBe(2); // lines 12 and 13 have DA entry
+    expect(result.coveredNewLines).toBe(1); // only line 13 has hit > 0
   });
 });
 
 describe('createAnnotations', () => {
   it('produces annotations for uncovered data (detailed)', async () => {
-    const uncovered = await findUncoveredCodeInPR(mockPrData, mockCoverageJSON, ['lines']);
-    const annotations = createAnnotations(uncovered, 'detailed');
+    const { untestedLinesOfFiles } = await findUncoveredCodeInPR(mockPrData, mockCoverageJSON, ['lines']);
+    const annotations = createAnnotations(untestedLinesOfFiles, 'detailed');
     expect(annotations).toBeDefined();
     expect(Array.isArray(annotations)).toBe(true);
     expect(annotations.length).toBeGreaterThanOrEqual(0);
@@ -214,8 +214,8 @@ describe('createAnnotations', () => {
   });
 
   it('produces annotations for uncovered data (summarize)', async () => {
-    const uncovered = await findUncoveredCodeInPR(mockPrData, mockCoverageJSON, ['lines']);
-    const annotations = createAnnotations(uncovered, 'summarize');
+    const { untestedLinesOfFiles } = await findUncoveredCodeInPR(mockPrData, mockCoverageJSON, ['lines']);
+    const annotations = createAnnotations(untestedLinesOfFiles, 'summarize');
     expect(annotations).toBeDefined();
     expect(Array.isArray(annotations)).toBe(true);
     annotations.forEach((a) => {

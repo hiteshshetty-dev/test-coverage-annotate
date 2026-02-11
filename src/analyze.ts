@@ -68,6 +68,24 @@ export function getNewLinesCoverageStats(
   return { totalNewLines, coveredNewLines };
 }
 
+/** Build list of (fileName, lineNumber) from untestedLinesOfFiles (unique per line). For debug output. */
+export function getUncoveredNewLineNumbersFromUntested(
+  untestedLinesOfFiles: UncoveredFiles
+): { fileName: string; lineNumber: number }[] {
+  const out: { fileName: string; lineNumber: number }[] = [];
+  for (const [fileName, arr] of Object.entries(untestedLinesOfFiles)) {
+    const seen = new Set<number>();
+    for (const { lineNumber } of arr) {
+      if (!seen.has(lineNumber)) {
+        seen.add(lineNumber);
+        out.push({ fileName, lineNumber });
+      }
+    }
+  }
+  out.sort((a, b) => a.fileName.localeCompare(b.fileName) || a.lineNumber - b.lineNumber);
+  return out;
+}
+
 /** New lines that have an LCOV DA entry and are uncovered (hit 0). Same set as annotation "lines" type. */
 export function getUncoveredNewLineNumbers(
   prData: PrData,
@@ -145,13 +163,27 @@ function checkIfLineUncoveredInCoverage(
   return annotations;
 }
 
+export interface FindUncoveredCodeInPRResult {
+  untestedLinesOfFiles: UncoveredFiles;
+  /** New lines that have a DA entry in LCOV (same set used for percentage). */
+  totalNewLines: number;
+  /** New lines with DA entry and hit > 0. */
+  coveredNewLines: number;
+}
+
+/**
+ * Finds uncovered code in PR and, in the same pass, counts total/covered new lines
+ * (only lines with a DA entry). Use totalNewLines/coveredNewLines for the global percentage.
+ */
 export function findUncoveredCodeInPR(
   prData: PrData,
   coverageJSON: LcovFile[],
   typesToCover: string[]
-): Promise<UncoveredFiles> {
+): Promise<FindUncoveredCodeInPRResult> {
   return new Promise((resolve) => {
     const filesWithMatches: UncoveredFiles = {};
+    let totalNewLines = 0;
+    let coveredNewLines = 0;
     prData.forEach((file) => {
       const fileName = file.fileName;
       const fileCoverage = coverageJSON.find((coverageFile) =>
@@ -166,6 +198,12 @@ export function findUncoveredCodeInPR(
         const endsAfter = parseInt(change.endsAfter, 10) || 1;
         for (let i = 0; i < endsAfter; i++) {
           const currentLineNumber = startLine + i;
+          if (hasLineEntry(currentLineNumber, fileCoverage)) {
+            totalNewLines += 1;
+            if (isLineCovered(currentLineNumber, fileCoverage)) {
+              coveredNewLines += 1;
+            }
+          }
           const matches = checkIfLineUncoveredInCoverage(
             currentLineNumber,
             fileCoverage,
@@ -180,6 +218,10 @@ export function findUncoveredCodeInPR(
         delete filesWithMatches[fileName];
       }
     });
-    resolve(filesWithMatches);
+    resolve({
+      untestedLinesOfFiles: filesWithMatches,
+      totalNewLines,
+      coveredNewLines,
+    });
   });
 }

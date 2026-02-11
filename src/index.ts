@@ -7,8 +7,7 @@ import { filterPrDataForCoverageWithReasons } from './coverage-files.js';
 import { coverageReportToJs } from './lcov-to-json.js';
 import {
   findUncoveredCodeInPR,
-  getNewLinesCoverageStats,
-  getUncoveredNewLineNumbers,
+  getUncoveredNewLineNumbersFromUntested,
   lcovPathMatchesPrPath,
 } from './analyze.js';
 import { createAnnotations } from './annotations.js';
@@ -72,20 +71,13 @@ Toolkit.run(async (tools) => {
     const typesToCoverInput = core.getInput('annotation-type');
     const typesToCover = typesToCoverInput.split(',').map((item) => item.trim());
 
-    const untestedLinesOfFiles = await findUncoveredCodeInPR(
-      prDataForCoverage,
-      coverageJSON,
-      typesToCover
-    );
+    const { untestedLinesOfFiles, totalNewLines, coveredNewLines } =
+      await findUncoveredCodeInPR(prDataForCoverage, coverageJSON, typesToCover);
     const coverageType = core.getInput('annotation-coverage');
     const annotations = createAnnotations(untestedLinesOfFiles, coverageType);
     const totalFiles = Object.keys(untestedLinesOfFiles).length;
     const totalWarnings = annotations.length;
 
-    const { totalNewLines, coveredNewLines } = getNewLinesCoverageStats(
-      prDataForCoverage,
-      coverageJSON
-    );
     const thresholdInput = core.getInput('new-lines-coverage-threshold');
     const threshold = Math.min(100, Math.max(0, parseInt(thresholdInput, 10) || 90));
     const newLinesCoveragePct =
@@ -104,9 +96,8 @@ Toolkit.run(async (tools) => {
         filterResult.excluded,
         notInCoverageData
       );
-      const uncoveredNewLinesList = getUncoveredNewLineNumbers(
-        prDataForCoverage,
-        coverageJSON
+      const uncoveredNewLinesList = getUncoveredNewLineNumbersFromUntested(
+        untestedLinesOfFiles
       );
       logUncoveredLinesAndPercentage(
         uncoveredNewLinesList,
