@@ -11,7 +11,7 @@ import {
   lcovPathMatchesPrPath,
 } from './analyze.js';
 import { createAnnotations } from './annotations.js';
-import { createOrUpdateCheck } from './check-run.js';
+import { createOrUpdateCheck, getExistingCheckRun, CHECK_RUN_NAME } from './check-run.js';
 import type { PullRequestRef } from './check-run.js';
 import { createOrUpdateCoverageComment } from './pr-comment.js';
 import { logFileFilterSummary, logUncoveredLinesAndPercentage } from './debug.js';
@@ -30,7 +30,7 @@ Toolkit.run(async (tools) => {
     const createData = {
       started_at: new Date().toISOString(),
       status: 'in_progress',
-      name: 'Test Coverage Annotate',
+      name: CHECK_RUN_NAME,
     };
 
     const eventType = core.getInput('action-type');
@@ -50,9 +50,30 @@ Toolkit.run(async (tools) => {
       PR = toolkit.context.payload.pull_request as unknown as PullRequestRef;
     }
 
-    const response = await createOrUpdateCheck(createData, 'create', toolkit, PR);
-    const check_id = response.data.id;
-    console.log('Check Successfully Created', check_id);
+    const existingCheckRunId = await getExistingCheckRun(toolkit, PR.head.sha);
+    let check_id: number;
+    if (existingCheckRunId != null) {
+      check_id = existingCheckRunId;
+      await createOrUpdateCheck(
+        {
+          check_run_id: check_id,
+          ...createData,
+          output: {
+            title: 'Test Coverage Annotate🔎',
+            summary: '',
+            annotations: [],
+          },
+        },
+        'update',
+        toolkit,
+        PR
+      );
+      console.log('Reusing existing check run', check_id, '— cleared previous annotations.');
+    } else {
+      const response = await createOrUpdateCheck(createData, 'create', toolkit, PR);
+      check_id = response.data.id;
+      console.log('Check Successfully Created', check_id);
+    }
 
     const prData = await getDiffWithLineNumbers('HEAD^1');
     const coverageFilesInclude = core.getInput('coverage-files-include');

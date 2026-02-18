@@ -1,8 +1,31 @@
 import type { Toolkit } from 'actions-toolkit';
 
+export const CHECK_RUN_NAME = 'Test Coverage Annotate';
+
 export interface PullRequestRef {
   head: { sha: string };
   number: number;
+}
+
+/**
+ * Finds an existing check run for this ref with the given name (e.g. from a previous workflow run).
+ * Used so we can update the same check on re-run and replace its annotations instead of creating duplicates.
+ */
+export async function getExistingCheckRun(
+  tools: Toolkit,
+  headSha: string,
+  checkName: string = CHECK_RUN_NAME
+): Promise<number | null> {
+  const { data } = await tools.github.checks.listForRef({
+    owner: tools.context.repo.owner,
+    repo: tools.context.repo.repo,
+    ref: headSha,
+    check_name: checkName,
+    filter: 'latest',
+    per_page: 1,
+  });
+  const run = data.check_runs?.[0];
+  return run?.id ?? null;
 }
 
 interface CreateOrUpdateCheckData {
